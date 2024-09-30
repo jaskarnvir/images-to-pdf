@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Image to PDF Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #imagesContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .imagePreview {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: contain;
+        }
+        #errorMessage {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Multi-Image to PDF Converter</h1>
+    <input type="file" id="imageInput" accept="image/*" multiple>
+    <div id="imagesContainer"></div>
+    <button id="convertToPDF">Convert to PDF</button>
+    <div id="errorMessage"></div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const imagesContainer = document.getElementById('imagesContainer');
+        const convertToPDFBtn = document.getElementById('convertToPDF');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let images = [];
+
+        imageInput.addEventListener('change', (e) => {
+            images = [];
+            imagesContainer.innerHTML = '';
+            errorMessage.textContent = '';
+
+            Array.from(e.target.files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const preview = document.createElement('img');
+                        preview.src = event.target.result;
+                        preview.alt = `Image ${index + 1}`;
+                        preview.className = 'imagePreview';
+                        imagesContainer.appendChild(preview);
+                        images.push({ img, type: file.type });
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        convertToPDFBtn.addEventListener('click', () => {
+            if (images.length === 0) {
+                errorMessage.textContent = 'Please upload at least one image.';
+                return;
+            }
+
+            try {
+                const { jsPDF } = window.jspdf;
+                if (!jsPDF) {
+                    throw new Error('jsPDF library not loaded.');
+                }
+
+                const pdf = new jsPDF();
+
+                images.forEach((imgData, index) => {
+                    if (index > 0) pdf.addPage();
+
+                    const { width, height } = imgData.img;
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (height * pdfWidth) / width;
+
+                    pdf.addImage(imgData.img, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                });
+
+                pdf.save('converted-images.pdf');
+            } catch (error) {
+                errorMessage.textContent = `Error: ${error.message}`;
+                console.error('PDF Conversion Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
